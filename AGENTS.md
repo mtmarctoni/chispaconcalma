@@ -33,6 +33,9 @@ not a dependency required to build this repository.
   review", "publicar para revisión", or equivalent authorizes that task's commit,
   branch push and draft PR only.
 - Read `.agents/skills/publish-for-review/SKILL.md` for every publication.
+- Read `docs/releases.md` for environment rollout state. Previews upload versions of
+  the staging Worker without changing its live traffic; production is separate and
+  disabled until developer activation. Keep legacy `staging/e2e` until verified migration.
 - Never merge, mark a PR ready, approve a PR, create a release or deploy production.
 - Do not deploy directly from the laptop or request Cloudflare deployment secrets.
 - Workflows, deployment scripts/config, lockfiles, dependencies, tests, CODEOWNERS,
@@ -46,5 +49,6 @@ not a dependency required to build this repository.
 
 State what was actually verified, the exact commit, PR/run links and any blockers.
 "Built locally", "CI passed", "deployed", and "deployed E2E passed" are different
-states. Never substitute one for another. A permanent staging URL can later show
-another task; readiness belongs to a commit and a particular workflow run.
+states. Never substitute one for another. Preview readiness belongs to the exact SHA,
+version URL and workflow run, not a mutable PR alias or shared staging URL.
+During migration both Preview and legacy Staging must pass before claiming readiness.
