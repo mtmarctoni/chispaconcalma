@@ -1,5 +1,22 @@
 # Developer staging setup and security checklist
 
+## Environment rollout update — 2026-11-21
+
+See [docs/releases.md](releases.md) for the approved two-Worker model: PR preview
+versions share the staging Worker without moving live traffic; merged main will
+deploy staging, and approved releases will deploy production.
+
+This branch prepares **PR A only**. Legacy PR Staging below remains active and
+`staging/e2e` remains required until the developer verifies Preview and explicitly
+migrates live protections. New main Staging, release maintenance and production are
+disabled by default. Do not enable main Staging while legacy PR Staging still runs.
+No live settings, credentials, releases or deployments are implied by the new files.
+
+The sections below document the retained legacy flow and its original provisioning.
+For new `preview`, `release` and `production` Environments, flags, account isolation,
+App permissions and final cutover, follow `docs/releases.md`. Keep the original
+security controls; do not treat a second Worker name as a credential boundary.
+
 ## Current state
 
 The repository initially had no commit or remote. The public GitHub repository and
@@ -9,7 +26,8 @@ https://github.com/mtmarctoni/chispaconcalma.
 See `docs/github-setup-status.md` for verified live settings and remaining blockers.
 The foundation's initial publication is covered by a single explicit developer
 bootstrap approval. No Cloudflare Worker has been created/deployed and no deployment
-secrets have been set. Production remains out of scope. All subsequent work uses PRs.
+secrets have been set. Production activation remains out of scope; disabled automation
+is now prepared by the rollout above. All subsequent work uses PRs.
 
 ## 1. Establish the public repository
 
@@ -90,8 +108,8 @@ Create a GitHub Environment named **staging**:
 - Ensure owner account/agent has no developer token, Cloudflare credentials or
   pre-approved main-bypass credential cached on its machine.
 
-No production environment, production secrets, release tags or deployment commands
-are created by this implementation.
+The legacy flow creates no production environment, secrets or release tags.
+New production commands are default-disabled and require the separate rollout above.
 
 ## 5. Understand the trust split
 

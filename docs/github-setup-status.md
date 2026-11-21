@@ -2,6 +2,11 @@
 
 Repository: https://github.com/mtmarctoni/chispaconcalma
 
+**Prepared rollout, not applied settings:** `docs/releases.md` describes the new
+two-Worker preview/staging/release model. The historical API read-back below remains
+unchanged; new environments, flags, action allowlists and required-check migration
+have not been provisioned or verified by this implementation.
+
 ## Applied and read back from GitHub
 
 - Public repository owned by `mtmarctoni`, default branch name `main`.

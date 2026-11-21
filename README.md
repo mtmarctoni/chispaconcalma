@@ -5,7 +5,8 @@ Website project for the Instagram account `chispaconcalma`.
 ## Website and staging
 
 The website now uses Astro with a prerendered React island migrated from the owner's
-homepage export. Fonts and portrait are local. Production deployment is not configured.
+homepage export. Fonts and portrait are local. Preview/staging/release automation is
+prepared; production deployment remains disabled.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -22,6 +23,7 @@ and desktop/mobile browser tests. `pnpm format:check` checks formatting.
 - [Owner workflow](docs/owner-workflow.md)
 - [Website/design contract](docs/site-contract.md)
 - [Staging provisioning and security checklist](docs/staging-setup.md)
+- [Preview, staging, releases and rollback](docs/releases.md)
 - [Design spec](docs/superpowers/specs/2026-11-21-owner-staging-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-11-21-owner-staging.md)
 
@@ -29,6 +31,8 @@ and desktop/mobile browser tests. `pnpm format:check` checks formatting.
 configured](docs/github-setup-status.md); initial publication has explicit one-time
 bootstrap approval. Subsequent work uses PRs. Cloudflare authentication, isolated staging credentials, Worker
 URL and the live owner trial remain pending. See the setup checklist above.
+The rollout retains the existing `staging/e2e` merge gate until preview verification
+is proven and the developer approves the live migration. No production launch is implied.
 
 Resource email/download integrations are intentionally unavailable; contact uses email
 instead of the prototype's placeholder WhatsApp number.

@@ -18,12 +18,20 @@ No necesitas claves de Cloudflare.
 3. Cuando quieras compartirlo, di **«publicar para revisión»**.
 4. Claude comprueba la web, guarda los cambios y abre una propuesta en GitHub.
 5. Espera a las comprobaciones y a las pruebas de la web publicada.
-6. Claude te devuelve el enlace de staging, la propuesta y el resultado.
+6. Claude te devuelve el enlace de vista previa de tu propuesta, la versión exacta
+   comprobada y el resultado.
 7. El desarrollador recibe una mención en GitHub y revisa los cambios.
 
-La web de staging tiene un enlace fijo, pero muestra la última propuesta publicada.
-La propuesta de GitHub identifica exactamente qué versión se ha comprobado.
-Publicar aquí NO publica en producción ni autoriza a Claude a fusionar cambios.
+Cada propuesta tendrá su propia vista previa, también si sigue como borrador.
+El enlace de versión identifica lo comprobado; el alias de la propuesta puede cambiar.
+Staging será la web con cambios ya aceptados por el desarrollador. Producción solo
+cambiará con una versión publicada y autorizada por él.
+
+**Transición:** la configuración está preparada, pero el desarrollador debe verificarla.
+Mientras exista el circuito antiguo, también se comprueba su staging compartido y
+deben pasar ambos circuitos. Que ese enlace fijo funcione no demuestra que tu vista
+previa haya pasado las pruebas. Consulta `docs/releases.md` para el estado del despliegue.
+Publicar para revisión NO publica en producción ni autoriza a Claude a fusionar cambios.
 
 ## Si algo falla
 

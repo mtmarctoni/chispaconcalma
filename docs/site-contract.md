@@ -79,6 +79,10 @@ Section files above are relative to `src/components/home/`.
   changing the visual identity.
 - Staging is deliberately noindex. Production metadata, legal notices and backend
   integrations are not complete.
+- Preview versions share the staging Worker without changing live staging traffic.
+  Production has a separate Worker and default-disabled tagged-release automation.
+  All environments remain noindex until a separately reviewed launch task.
+  See `docs/releases.md` for the transitional required-check migration.
 
 `scripts/import-prototype.py` is migration provenance, not a normal editing tool.
 It refuses to overwrite migrated source. Subsequent accessibility and responsive
