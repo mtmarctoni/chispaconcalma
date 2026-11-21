@@ -5,7 +5,7 @@
   "description": "Chispa con Calma website and local content research",
   "packageManager": "pnpm@11.17.0",
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=26.13.1 <27"
   },
   "scripts": {
     "format": "prettier --write src scripts/staging tests astro.config.mjs cloudflare.config.ts playwright.config.ts",
