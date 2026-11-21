@@ -7,4 +7,4 @@ urllib3==2.6.3
 browser-cookie3==0.20.1
 lz4==4.4.5
 pycryptodomex==3.24.2
-pillow==11.3.0
+pillow==13.0.0
