@@ -104,7 +104,7 @@ jobs:
           EXPECTED_SHA: ${{ steps.source.outputs.sha }}
           EXPECTED_PR: ${{ steps.source.outputs.pr }}
       - name: Publish assets only to the staging Worker
-        run: pnpm exec cf deploy ./staging-assets --no-provision --message "$DEPLOY_SHA"
+        run: pnpm exec cf deploy ./staging-assets --mode staging --no-provision --message "$DEPLOY_SHA"
         env:
           DEPLOY_SHA: ${{ steps.source.outputs.sha }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

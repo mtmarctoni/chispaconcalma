@@ -34,18 +34,16 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
-      - name: Stamp exact PR head revision
-        if: github.event_name == 'pull_request'
+      - name: Stamp exact source revision
         run: pnpm staging:metadata
         env:
-          BUILD_SHA: ${{ github.event.pull_request.head.sha }}
+          BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Validate static artifact
-        if: github.event_name == 'pull_request'
         run: pnpm staging:validate
         env:
-          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         with:
           name: staging-assets
           path: dist/
