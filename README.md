@@ -13,7 +13,10 @@ pnpm exec playwright install chromium
 pnpm dev
 ```
 
-Use Node from `.nvmrc`. `pnpm validate` runs Astro checks, unit/security tests, build
+Use Node **26.13.1 LTS** from `.nvmrc` (`nvm install && nvm use` if using nvm).
+GitHub validation and staging jobs read this same file. The package engine range
+accepts Node 26 LTS patch/minor updates but excludes the Node 27 alpha.
+`pnpm validate` runs Astro checks, unit/security tests, build
 and desktop/mobile browser tests. `pnpm format:check` checks formatting.
 
 - [Owner workflow](docs/owner-workflow.md)
