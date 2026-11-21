@@ -1,0 +1,30 @@
+
+# Local dependencies and build output
+node_modules/
+.venv/
+__pycache__/
+dist/
+.astro/
+.wrangler/
+.playwright-cli/
+.cloudflare/
+playwright-report/
+test-results/
+.superpowers/
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+sessions/
+session-*
+*.session
+
+# Collected source material (not for publication by default)
+data/
+downloads/
+
+# Operating system
+.DS_Store
