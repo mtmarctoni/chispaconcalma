@@ -1,0 +1,32 @@
+/* Migration corrections only. Original visual language lives in reference.css. */
+html {
+  scroll-padding-top: 90px;
+}
+:focus-visible {
+  outline: 3px solid #5b4a99;
+  outline-offset: 5px;
+}
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 10000;
+  padding: 12px 20px;
+  background: #fcefb4;
+  color: #1a1a1a;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+}
+.skip-link:focus {
+  top: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

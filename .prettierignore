@@ -1,0 +1,12 @@
+node_modules/
+dist/
+data/
+downloads/
+sessions/
+.astro/
+.cloudflare/
+.playwright-cli/
+.venv/
+playwright-report/
+test-results/
+pnpm-lock.yaml

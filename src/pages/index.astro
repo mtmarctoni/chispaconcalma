@@ -1,0 +1,27 @@
+---
+import Home from '../components/home/Home.jsx';
+import '../styles/reference.css';
+import '../styles/site.css';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Organizo la parte digital de tu negocio: sistemas, proyectos y web, para que tus ideas avancen sin agobios."
+    />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#F9F8F3" />
+    <title>Chispa con Calma — Inicio</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <a class="skip-link" href="#inicio">
+      Saltar al contenido
+    </a>
+    <Home client:load motion={true} />
+  </body>
+</html>
