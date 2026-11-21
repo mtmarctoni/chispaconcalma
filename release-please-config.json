@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "draft-pull-request": true,
+  "include-component-in-tag": false,
+  "bump-minor-pre-major": false,
+  "bump-patch-for-minor-pre-major": false,
+  "bootstrap-sha": "f41c36ddf7b18f19a41491474b7784b405df855a",
+  "packages": {
+    ".": {
+      "initial-version": "0.1.0"
+    }
+  }
+}

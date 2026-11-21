@@ -1,0 +1,177 @@
+name: Preview
+
+on:
+  workflow_run:
+    workflows: [Checks]
+    types: [completed]
+
+# A same-repository head branch has at most one open PR targeting main.
+# Unlike workflow_run.pull_requests, head_branch is populated on fork-associated runs.
+concurrency:
+  group: preview-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  identify:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      statuses: write
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      pr: ${{ steps.source.outputs.pr }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - id: source
+        run: node scripts/deployment/preview-context.mjs identify
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          DEPLOY_SHA: ${{ steps.source.outputs.sha }}
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              ...context.repo, sha: process.env.DEPLOY_SHA, state: 'pending',
+              context: 'preview/e2e', description: 'Evaluating preview publication',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
+
+  upload:
+    needs: identify
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: preview
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      version_url: ${{ steps.urls.outputs.version_url }}
+      alias_url: ${{ steps.urls.outputs.alias_url }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/deployment/preview-context.mjs download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
+          EXPECTED_PR: ${{ needs.identify.outputs.pr }}
+      - run: python3 scripts/staging/extract-artifact.py preview-artifact.zip preview-assets
+      - run: node scripts/staging/validate-assets.mjs preview-assets
+        env:
+          EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
+      - run: node scripts/staging/add-headers.mjs preview-assets
+      - name: Recheck current PR before upload
+        run: node scripts/deployment/preview-context.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
+          EXPECTED_PR: ${{ needs.identify.outputs.pr }}
+      - name: Upload version only; never deploy live traffic
+        run: >-
+          pnpm exec cf workers versions create ./preview-assets --mode preview
+          --preview-alias "pr-$PR_NUMBER" --message "$DEPLOY_SHA" > preview-upload.log
+        env:
+          PR_NUMBER: ${{ needs.identify.outputs.pr }}
+          DEPLOY_SHA: ${{ needs.identify.outputs.sha }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - id: urls
+        run: node scripts/deployment/preview-output.mjs preview-upload.log
+        env:
+          PR_NUMBER: ${{ needs.identify.outputs.pr }}
+          PREVIEW_ACCOUNT_SUBDOMAIN: ${{ vars.PREVIEW_ACCOUNT_SUBDOMAIN }}
+
+  e2e:
+    needs: [identify, upload]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.upload.outputs.version_url }}
+          EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: preview-browser-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 3
+
+  notify:
+    if: always() && needs.identify.outputs.sha != ''
+    needs: [identify, upload, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Refuse stale readiness
+        run: node scripts/deployment/preview-context.mjs identify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
+          EXPECTED_PR: ${{ needs.identify.outputs.pr }}
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          DEPLOY_SHA: ${{ needs.identify.outputs.sha }}
+          PR_NUMBER: ${{ needs.identify.outputs.pr }}
+          VERSION_URL: ${{ needs.upload.outputs.version_url }}
+          ALIAS_URL: ${{ needs.upload.outputs.alias_url }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          UPLOAD_RESULT: ${{ needs.upload.result }}
+          CHECKS_RESULT: ${{ github.event.workflow_run.conclusion }}
+        with:
+          script: |
+            const passed = process.env.E2E_RESULT === 'success' && process.env.UPLOAD_RESULT === 'success';
+            const result = passed ? 'Ready for developer review' : `Not ready: Checks ${process.env.CHECKS_RESULT}, upload ${process.env.UPLOAD_RESULT}, E2E ${process.env.E2E_RESULT}`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const checksUrl = context.payload.workflow_run.html_url;
+            const body = `@${context.repo.owner} **${result}**\n\nCommit: \`${process.env.DEPLOY_SHA}\`\nVersion preview: ${process.env.VERSION_URL || '(not uploaded)'}\nMutable PR alias: ${process.env.ALIAS_URL || '(not uploaded)'}\nChecks: ${checksUrl}\nPreview verification: ${runUrl}\n\nThis result applies only to this commit and version URL. Staging traffic is unchanged.`;
+            await github.rest.repos.createCommitStatus({
+              ...context.repo, sha: process.env.DEPLOY_SHA, state: passed ? 'success' : 'failure',
+              context: 'preview/e2e', description: passed ? result : 'Preview verification failed', target_url: runUrl,
+            });
+            await github.rest.issues.createComment({ ...context.repo, issue_number: Number(process.env.PR_NUMBER), body });
+            await core.summary.addHeading(result).addRaw(body).write();
