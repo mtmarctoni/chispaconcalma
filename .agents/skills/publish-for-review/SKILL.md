@@ -5,7 +5,9 @@ description: Use when the Chispa con Calma owner explicitly asks to publish for 
 
 # Publish for developer review
 
-Read `AGENTS.md` and `docs/staging-setup.md`. This publishes staging only.
+Read `AGENTS.md`, `docs/staging-setup.md` and `docs/releases.md`.
+This publishes a PR preview, never production. During rollout the legacy shared
+Staging workflow also runs and remains a required check until developer migration.
 
 ## Authorization and local evidence
 
@@ -28,18 +30,25 @@ commit, task-branch push and draft PR, never main updates or merges.
 5. Watch the **Checks run for that exact SHA**, not simply the latest green run.
    `gh run list --workflow checks.yml --commit <SHA>` and `gh run watch <ID>
    --exit-status` are useful. Ensure it is the PR event, not an unrelated push run.
-6. Locate the separate **Staging workflow_run** associated with that Checks run.
+6. Locate the separate **Preview workflow_run** associated with that Checks run.
    `gh pr checks` alone is insufficient: workflow_run may not appear as a normal
-   PR check. Inspect run metadata and the PR's `staging/e2e` commit status.
-7. Verify Staging's source SHA and linked triggering run, successful deployed E2E,
-   and `/deployment.json` at the reported HTTPS staging URL. Metadata must match
+   PR check. Inspect run metadata and the PR's `preview/e2e` commit status.
+   While `.github/workflows/staging.yml` remains, also verify its linked legacy
+   **Staging** run and `staging/e2e` status. Both circuits must pass during transition.
+   A green legacy Staging result never overrides failed/missing Preview verification.
+7. Verify Preview's source SHA and linked triggering run, successful deployed E2E,
+   and `/deployment.json` at the reported version-specific HTTPS URL. Metadata must match
    exactly. A green run for SHA A does not validate current SHA B.
+   The per-PR alias is mutable and is not the tested version URL. Preview uploads
+   must not shift live staging traffic. If Preview is unconfigured, report Blocked;
+   do not fall back to a shared staging URL and claim preview readiness.
 8. Bound waiting to 20 minutes per publication attempt. If canceled, superseded,
    skipped, missing, awaiting access, or stuck, report the state and run links.
    Do not infer success. If superseded, re-run the current SHA's Checks once to
-   request staging again; do not push an empty commit. If it happens again, stop.
-9. If another PR now owns the shared URL, state that your run passed for your SHA
-   but the URL has since changed. Do not redeploy over another task automatically.
+   request preview again; do not push an empty commit. If it happens again, stop.
+9. Check the version URL still serves the tested SHA. Report alias changes separately.
+   During transition, if another PR now owns the legacy shared URL, report that the
+   legacy run passed for your SHA but its URL changed. Do not redeploy over another task.
 
 ## Failure handling
 
@@ -59,9 +68,11 @@ Report in the owner's language:
 
 - What changed.
 - Local verification result.
-- Exact SHA, draft PR URL and matching Staging run URL.
-- Permanent staging URL, and whether it still serves that SHA.
+- Exact SHA, draft PR URL, source Checks run and matching Preview run URLs.
+- Version-specific preview URL and mutable PR alias, and whether the version serves that SHA.
+- During transition: legacy Staging run/URL and whether it still serves that SHA.
 - **Ready for developer review** only when exact-SHA deployed E2E passed.
+- Failed/missing Preview is **Blocked** even if the legacy Staging URL looks correct.
 - Otherwise **Blocked**, the failed/pending step, attempts used and next action.
 
 No production deployment or merge is performed.
