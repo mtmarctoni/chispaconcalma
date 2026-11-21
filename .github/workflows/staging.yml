@@ -1,0 +1,191 @@
+name: Staging
+
+on:
+  workflow_run:
+    workflows: [Checks]
+    types: [completed]
+
+# Includes all jobs, not only deployment. Never interrupt verification mid-run.
+# GitHub may replace a pending run with a newer one: the agent must detect that.
+concurrency:
+  group: shared-staging
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  identify:
+    name: Identify current owner PR
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      statuses: write
+    outputs:
+      sha: ${{ steps.identity.outputs.sha }}
+      pr: ${{ steps.identity.outputs.pr }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Identify without requiring successful checks or downloading assets
+        id: identity
+        run: node scripts/staging/context.mjs identify
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Invalidate previous readiness while this attempt is evaluated
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          DEPLOY_SHA: ${{ steps.identity.outputs.sha }}
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              ...context.repo, sha: process.env.DEPLOY_SHA, state: 'pending',
+              context: 'staging/e2e', description: 'Evaluating staging publication',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
+
+  deploy:
+    name: Deploy static staging
+    needs: identify
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # REQUIRED: environment permits main only. Secrets must NOT be repository-level.
+    environment:
+      name: staging
+      url: ${{ steps.source.outputs.url }}
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      pr: ${{ steps.source.outputs.pr }}
+      url: ${{ steps.source.outputs.url }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      - name: Verify source run, current PR and artifact provenance
+        id: source
+        run: node scripts/staging/context.mjs download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_URL: ${{ vars.STAGING_URL }}
+      - name: Safely extract into a new directory
+        run: python3 scripts/staging/extract-artifact.py staging-artifact.zip staging-assets
+      - name: Validate assets using trusted policy
+        run: node scripts/staging/validate-assets.mjs staging-assets
+        env:
+          EXPECTED_SHA: ${{ steps.source.outputs.sha }}
+      - name: Add trusted HTTP headers
+        run: node scripts/staging/add-headers.mjs staging-assets
+      - name: Recheck PR immediately before deployment
+        run: node scripts/staging/context.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_URL: ${{ vars.STAGING_URL }}
+          EXPECTED_SHA: ${{ steps.source.outputs.sha }}
+          EXPECTED_PR: ${{ steps.source.outputs.pr }}
+      - name: Publish assets only to the staging Worker
+        run: pnpm exec cf deploy ./staging-assets --no-provision --message "$DEPLOY_SHA"
+        env:
+          DEPLOY_SHA: ${{ steps.source.outputs.sha }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  e2e:
+    name: Verify deployed staging
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify deployed revision and behavior with trusted tests
+        run: pnpm test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.url }}
+          EXPECTED_SHA: ${{ needs.deploy.outputs.sha }}
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: staging-browser-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 3
+
+  notify:
+    name: Report staging result
+    if: always() && needs.identify.outputs.sha != ''
+    needs: [identify, deploy, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Do not announce an outdated or closed PR
+        run: node scripts/staging/context.mjs identify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_URL: ${{ needs.deploy.outputs.url }}
+          EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
+          EXPECTED_PR: ${{ needs.identify.outputs.pr }}
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          DEPLOY_SHA: ${{ needs.identify.outputs.sha }}
+          PR_NUMBER: ${{ needs.identify.outputs.pr }}
+          STAGING_URL: ${{ needs.deploy.outputs.url }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          CHECKS_RESULT: ${{ github.event.workflow_run.conclusion }}
+        with:
+          script: |
+            const passed = process.env.E2E_RESULT === 'success' && process.env.DEPLOY_RESULT === 'success';
+            const result = passed ? 'Ready for developer review'
+              : process.env.CHECKS_RESULT !== 'success' ? `Not ready: Checks ${process.env.CHECKS_RESULT}`
+              : process.env.DEPLOY_RESULT !== 'success' ? `Not ready: deployment ${process.env.DEPLOY_RESULT}`
+              : `Not ready: deployed E2E ${process.env.E2E_RESULT}`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `@${context.repo.owner} **${result}**\n\nCommit: \`${process.env.DEPLOY_SHA}\`\nStaging: ${process.env.STAGING_URL || '(not deployed)'}\nChecks: ${runUrl}\n\nThis shared URL may later show another PR. The result above applies only to this commit.`;
+            await github.rest.repos.createCommitStatus({
+              ...context.repo, sha: process.env.DEPLOY_SHA,
+              state: passed ? 'success' : 'failure', context: 'staging/e2e',
+              description: result, target_url: runUrl,
+            });
+            await github.rest.issues.createComment({ ...context.repo, issue_number: Number(process.env.PR_NUMBER), body });
+            await core.summary.addHeading(result).addRaw(body).write();

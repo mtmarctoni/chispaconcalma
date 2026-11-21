@@ -1,0 +1,27 @@
+{
+  "name": "main-update-authority",
+  "target": "branch",
+  "enforcement": "active",
+  "bypass_actors": [
+    {
+      "actor_id": 5,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "pull_request"
+    }
+  ],
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/main", "~DEFAULT_BRANCH"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "creation" },
+    {
+      "type": "update",
+      "parameters": { "update_allows_fetch_and_merge": false }
+    },
+    { "type": "deletion" },
+    { "type": "non_fast_forward" }
+  ]
+}
