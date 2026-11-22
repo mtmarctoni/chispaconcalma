@@ -1,2 +1,3 @@
 Temporary preview verification fixture A.
 Not intended for merge or production.
+Recovery revision after the authorized negative-control trial.
