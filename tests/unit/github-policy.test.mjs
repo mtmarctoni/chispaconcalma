@@ -20,7 +20,7 @@ test('merge methods preserve required checks and developer-only update authority
   assert.equal(gate.parameters.strict_required_status_checks_policy, true);
   assert.deepEqual(gate.parameters.required_status_checks, [
     { context: 'Validate', integration_id: 15368 },
-    { context: 'staging/e2e', integration_id: 15368 },
+    { context: 'preview/e2e', integration_id: 15368 },
   ]);
   assert.equal(authority.enforcement, 'active');
   assert.deepEqual(authority.bypass_actors, [

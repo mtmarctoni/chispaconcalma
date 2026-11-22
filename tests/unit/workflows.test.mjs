@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { test } from 'node:test';
 import { parse } from 'yaml';
 
@@ -34,18 +34,23 @@ test('preview upload cannot deploy live traffic or execute PR tooling with crede
     /version_url/,
   );
   assert.doesNotMatch(preview.jobs.upload.if, /draft/);
-  const legacy = await workflow('staging');
-  assert.ok(legacy.jobs.deploy);
+});
+
+test('merge readiness requires PR preview, not legacy PR staging or a post-merge deployment', async () => {
+  const workflows = await readdir('.github/workflows');
+  assert.ok(!workflows.includes('staging.yml'));
   const rules = JSON.parse(
     await readFile('ops/github/main-checks.json', 'utf8'),
   );
-  assert.ok(
-    rules.rules
-      .find((r) => r.type === 'required_status_checks')
-      .parameters.required_status_checks.some(
-        (s) => s.context === 'staging/e2e',
-      ),
-  );
+  const checks = rules.rules.find(
+    (r) => r.type === 'required_status_checks',
+  ).parameters;
+  assert.deepEqual(checks.required_status_checks, [
+    { context: 'Validate', integration_id: 15368 },
+    { context: 'preview/e2e', integration_id: 15368 },
+  ]);
+  assert.equal(checks.strict_required_status_checks_policy, true);
+  assert.deepEqual(rules.bypass_actors, []);
 });
 
 test('main staging is opt-in, consumes checked assets and serializes deployment with E2E', async () => {
