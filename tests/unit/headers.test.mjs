@@ -19,6 +19,9 @@ test('deployment CSP hashes inline hydration without enabling arbitrary inline s
   );
   assert.equal(result.status, 0, result.stderr);
   const headers = await readFile(path.join(directory, '_headers'), 'utf8');
+  const wildcard = headers.split(/\r?\n\r?\n/)[0];
+  assert.match(wildcard, /^\/\*\r?\n/);
+  assert.match(wildcard, /^  X-Robots-Tag: noindex, nofollow\r?$/m);
   assert.ok(
     headers.includes("'sha256-bhHHL3z2vDgxUt0W3dWQOrprscmda2Y5pLsLg4GF+pI='"),
   );
