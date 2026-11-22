@@ -1,0 +1,2 @@
+Temporary preview verification fixture A.
+Not intended for merge or production.
