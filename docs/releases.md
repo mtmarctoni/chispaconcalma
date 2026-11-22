@@ -3,6 +3,12 @@
 This is a prepared rollout, not evidence of a live deployment. Production remains
 disabled and no production launch is authorized by these files.
 
+Current provisioning evidence and blockers are recorded in
+[`github-setup-status.md`](github-setup-status.md). The preview Environment now has
+a verified main-only branch policy and both Cloudflare secret names configured.
+Credential validity and preview behavior still require the first live trial.
+Do not confuse Environment creation with successful version upload or deployed E2E.
+
 ## Two Workers, three stages
 
 | Stage | Source | Worker / operation |
@@ -92,7 +98,12 @@ boundary. No baseline tag or past release is fabricated.
 - These bump rules apply below 1.0 too.
 - Internal-only `ci:`, `build:`, `docs:`, `test:`, `chore:` etc. do not independently
   create a release; they ride with the next visitor-facing change.
-- Squash merge titles must be conventional commits with the correct type.
+- Both squash and rebase merge are allowed. Prefer rebase for clean, intentionally
+  grouped commits; squash experimental branches with fixups.
+- With squash, the PR title must be a conventional commit with the correct type.
+  With rebase, every retained commit counts toward Release Please's version bump;
+  check all commit messages, not only the PR title. Keep internal tooling changes
+  under `ci:`, `build:`, `docs:` or another non-release type.
 - Do not edit Release Please's version, manifest or changelog in ordinary work.
 
 Merging the release PR lets Release Please tag and publish that release. If production
