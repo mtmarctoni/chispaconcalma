@@ -164,6 +164,64 @@ test('reduced-motion users retain the compact navigation after scrolling', async
     .toBeLessThan(initialHeight);
 });
 
+test('prelaunch HTML is noindex before JavaScript', async ({
+  browser,
+  request,
+}) => {
+  const response = await request.get('/');
+  expect(response.status()).toBe(200);
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.setContent(await response.text(), {
+      waitUntil: 'domcontentloaded',
+    });
+    const robots = page.locator('head meta[name="robots"]');
+    await expect(robots).toHaveCount(1);
+    const directives = (await robots.getAttribute('content'))!
+      .toLowerCase()
+      .split(/\s*,\s*/);
+    expect(directives).toEqual(expect.arrayContaining(['noindex', 'nofollow']));
+    expect(directives).not.toContain('index');
+    expect(directives).not.toContain('follow');
+  } finally {
+    await context.close();
+  }
+});
+
+test('robots allows reading prelaunch indexing directives', async ({
+  request,
+}) => {
+  const response = await request.get('/robots.txt');
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toMatch(/^text\/plain\b/i);
+  expect((await response.text()).trim().split(/\r?\n/)).toEqual([
+    'User-agent: *',
+    'Allow: /',
+  ]);
+});
+
+test('deployed documents and assets carry HTTP noindex', async ({
+  request,
+}) => {
+  test.skip(
+    !process.env.EXPECTED_SHA,
+    'Local Astro preview does not apply Cloudflare response headers',
+  );
+  for (const path of ['/', '/robots.txt', '/assets/portrait.png']) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+    const directives = (response.headers()['x-robots-tag'] || '')
+      .toLowerCase()
+      .split(/\s*,\s*/);
+    expect(directives, path).toEqual(
+      expect.arrayContaining(['noindex', 'nofollow']),
+    );
+    expect(directives, path).not.toContain('index');
+    expect(directives, path).not.toContain('follow');
+  }
+});
+
 test('deployed staging is the exact requested revision', async ({
   request,
 }) => {
