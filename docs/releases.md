@@ -133,6 +133,27 @@ Production E2E is blocking; a failed test leaves the candidate visible for inspe
 
 ## Evidence and launch boundary
 
+### Prelaunch indexing policy
+
+Preview and staging are public review URLs, not private publishing systems.
+Their `robots.txt` deliberately allows crawling so search engines can read the
+`noindex, nofollow` directive in both the initial HTML and the trusted deployment
+HTTP headers. Blocking crawlers with `Disallow: /` would prevent discovery of
+those directives and can leave externally linked URLs eligible to appear in
+search results. No sitemap is advertised before launch.
+
+The wildcard `X-Robots-Tag` also covers non-HTML assets. Preview, staging and
+future production deployments all retain these protections; a production build,
+domain purchase or Worker provisioning must not enable indexing. There is no
+indexing enable switch. Launch indexing requires a separately approved change
+and verification that only `https://chispaconcalma.com` serves indexable content,
+not Worker origins, version URLs or preview aliases.
+
+Public `noindex` is not access control or an absolute exclusion guarantee.
+Local Astro preview does not apply Cloudflare response headers; deployed E2E
+must independently verify HTML, robots.txt and asset headers alongside the exact
+deployment SHA.
+
 Record the exact SHA, release tag where applicable, source Checks run, deployment
 run, version/origin URL and deployed test result. Local builds/dry-runs, CI success,
 upload/deploy success and deployed E2E success are different claims.
