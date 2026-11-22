@@ -1,5 +1,27 @@
 # Developer staging setup and security checklist
 
+## Cutover update — 2026-11-22
+
+Live required checks have been migrated and read back as `Validate` +
+`preview/e2e`, with strict up-to-date checks and the existing no-bypass and
+developer-only update protections retained. This change removes the legacy PR
+Staging workflow. Keep `MAIN_STAGING_ENABLED` unset until the developer merges
+this PR; only then enable and verify checked-main Staging. Release and production
+activation remain separate and disabled.
+
+The sections below preserve the historical staging setup and trial checklist;
+their legacy `staging/e2e` requirement is superseded by the migration above.
+See `docs/github-setup-status.md` for actual evidence and remaining owner-handoff
+limitations. Preview publication is verified by exact SHA and immutable version
+URL; post-merge Staging is not a PR merge prerequisite.
+
+Isolation was confirmed by the developer: the token has **Individual Workers
+Editor** restricted to `chispaconcalma-staging`, is stored in both deployment
+Environments, and that Worker has no bindings. The old blanket warning below
+about single-Worker scoping predates the verified granular permission. Do not
+substitute a fixed Worker name for an enforced token scope, or add production
+bindings to staging.
+
 ## Environment rollout update — 2026-11-21
 
 See [docs/releases.md](releases.md) for the approved two-Worker model: PR preview
