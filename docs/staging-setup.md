@@ -66,6 +66,12 @@ is the human approval boundary; CODEOWNERS requests their review for owner chang
 This avoids blocking developer-authored work or training the owner to rubber-stamp it.
 No agent may perform that merge without the developer's explicit confirmation.
 
+The authority rule's developer/admin exception is **PR-only bypass**. GitHub may
+label an authorized developer merge “bypass rules” because it overrides the update
+restriction, even when all checks pass. This is intentional merge authority, not
+permission to bypass the separate no-bypass check/review rule. Squash and rebase
+merge are allowed; ordinary merge commits remain disabled.
+
 Provisioned ruleset payloads are recorded in `ops/github/`. Committing those files
 alone does not configure GitHub; the live API settings must match them.
 

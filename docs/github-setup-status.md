@@ -2,10 +2,54 @@
 
 Repository: https://github.com/mtmarctoni/chispaconcalma
 
+## Preview provisioning update — 2026-11-22
+
+PR #3 was merged at `838c30ca918520a622ee42b824e13b8d1fca2c8b`.
+The developer approved preparing a follow-up PR and preview activation.
+Applied and read back:
+
+- GitHub Environment `preview` exists (28146568199), with custom deployment policies
+  allowing only branch `main`, no tag rule, and admin bypass disabled.
+- Repository variable `PREVIEW_ACCOUNT_SUBDOMAIN` is configured from the account
+  subdomain in the existing `STAGING_URL`; no credentials were read or copied.
+- The developer added `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` directly to
+  the preview Environment. Both secret names were verified through GitHub; their
+  values were not read, copied or printed. GitHub cannot reveal/copy encrypted
+  values from staging; never paste them in chat or use repository-level secrets.
+- The existing staging Environment has both secret names configured. This does not
+  independently prove their scope or nonproduction-account isolation.
+- No required-check migration or activation-flag change was performed.
+  `Validate` and legacy `staging/e2e` remain required; main Staging, release
+  maintenance and production remain disabled.
+
+Preview is **configured, with credential names present**, not deployed or verified.
+Credential validity, permissions and account isolation still require the live trial.
+Use the follow-up draft PR for the first exact-SHA preview trial.
+Do not rerun a closed PR to request a preview: the guard correctly
+rejects it. Keep the legacy gate until successful live preview evidence and a
+separate developer-approved migration.
+
+## Approved merge-method update — 2026-11-22
+
+The developer approved enabling rebase alongside squash. Applied and read back:
+
+- Repository: squash and rebase enabled; merge commits remain disabled.
+- `main-review-and-checks` (27800020): allowed methods are now `squash` and `rebase`.
+- All other live ruleset fields were compared with the pre-update response and
+  remained unchanged, including required checks, strict up-to-date policy, resolved
+  threads, active enforcement and the empty bypass-actor list.
+- `main-update-authority` (27800019) remains active with admin-role **PR-only bypass**.
+  GitHub may label developer merges “bypass rules” because this authorizes updating
+  main through a PR; it does not bypass the separate required-check/review ruleset.
+- No PR was merged and no deployment was requested by this settings update.
+
+The original provisioning snapshot below records the previous squash-only state.
+
 **Prepared rollout, not applied settings:** `docs/releases.md` describes the new
 two-Worker preview/staging/release model. The historical API read-back below remains
 unchanged; new environments, flags, action allowlists and required-check migration
-have not been provisioned or verified by this implementation.
+were not provisioned by PR #3. The dated update above records subsequent preview
+Environment provisioning; the remaining rollout is not activated or verified.
 
 ## Applied and read back from GitHub
 
