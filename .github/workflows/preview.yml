@@ -90,7 +90,7 @@ jobs:
       - name: Upload version only; never deploy live traffic
         run: >-
           pnpm exec cf workers versions create ./preview-assets --mode preview
-          --preview-alias "pr-$PR_NUMBER" --message "$DEPLOY_SHA" > preview-upload.log
+          --preview-alias "pr-$PR_NUMBER" --message "$DEPLOY_SHA" > preview-upload.log 2>&1
         env:
           PR_NUMBER: ${{ needs.identify.outputs.pr }}
           DEPLOY_SHA: ${{ needs.identify.outputs.sha }}

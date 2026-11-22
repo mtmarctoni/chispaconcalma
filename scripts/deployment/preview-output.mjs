@@ -11,7 +11,8 @@ export function parsePreviewOutput(text, { workerName, accountSubdomain, pr }) {
     pr < 1
   )
     throw new Error('Invalid preview configuration');
-  const clean = text.replace(/\x1b\[[0-9;]*m/g, '');
+  // cf's renderer prefixes messages with a guide even when output is redirected.
+  const clean = text.replace(/\x1b\[[0-9;]*m/g, '').replace(/^│ {2}/gm, '');
   const one = (label) => {
     const matches = [
       ...clean.matchAll(new RegExp(`^${label}: (\\S+)\\s*$`, 'gm')),
