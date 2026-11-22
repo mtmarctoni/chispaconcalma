@@ -27,7 +27,7 @@
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           { "context": "Validate", "integration_id": 15368 },
-          { "context": "staging/e2e", "integration_id": 15368 }
+          { "context": "preview/e2e", "integration_id": 15368 }
         ],
         "strict_required_status_checks_policy": true
       }
