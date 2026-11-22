@@ -2,6 +2,49 @@
 
 Repository: https://github.com/mtmarctoni/chispaconcalma
 
+## Preview gate cutover — 2026-11-22
+
+The developer approved concurrent Preview trials, live check migration, a draft
+legacy-removal PR and checked-main Staging after its human merge.
+
+- PR #6 SHA `e1869ecd3f363c20f5df020c3dd11d3525d6bb70`:
+  [Checks](https://github.com/mtmarctoni/chispaconcalma/actions/runs/45010042174),
+  [Preview attempt 2](https://github.com/mtmarctoni/chispaconcalma/actions/runs/45010135778/attempts/2),
+  [legacy Staging](https://github.com/mtmarctoni/chispaconcalma/actions/runs/45010135823).
+  Version: https://ebbd52f9-chispaconcalma-staging.mtmarctoni.workers.dev.
+- PR #7 SHA `72a2d94c4b40d06bdd3a03b13e8693e84fc20068`:
+  [Checks attempt 2](https://github.com/mtmarctoni/chispaconcalma/actions/runs/45009548878/attempts/2),
+  [Preview attempt 3](https://github.com/mtmarctoni/chispaconcalma/actions/runs/45009876928/attempts/3),
+  [legacy Staging](https://github.com/mtmarctoni/chispaconcalma/actions/runs/45009876948).
+  Version: https://b0b4dbeb-chispaconcalma-staging.mtmarctoni.workers.dev.
+- Both concurrent Preview attempts passed deployed E2E; independent metadata and
+  fixture requests matched each exact SHA and separate `pr-6` / `pr-7` aliases.
+  Upload jobs overlapped (A 16:51:35–16:52:01Z, B 16:51:34–16:51:56Z).
+  CLI upload steps touched the same second (A 16:51:54–57Z, B 16:51:51–54Z);
+  these logs do not prove subsecond Cloudflare-request overlap.
+- Staging served `e1869ec` before and after; no new legacy Staging run was
+  triggered. This is served-SHA evidence, not a control-plane traffic audit.
+- Intentional failure `9c394ce4ff4376ffd3b1d3738c9de684ab8f36b5` failed Checks;
+  [Preview](https://github.com/mtmarctoni/chispaconcalma/actions/runs/45009964144)
+  skipped upload/E2E and emitted `preview/e2e: failure`. Recovery passed on new SHA.
+  Superseded PR #4 runs 45008724609 / 45008724552 refused the stale head.
+- Developer showed the **Individual Workers Editor** token restricted to
+  `chispaconcalma-staging` (expires 2027-02-19), confirmed that token in both
+  `preview` and `staging` Environments and no Worker bindings. This is
+  developer-confirmed isolation, not an independent secret-value inspection.
+- Ruleset `27800020` was updated and read back: `Validate` + `preview/e2e`, both
+  tied to GitHub Actions integration `15368`; strict up-to-date policy retained.
+  Every other writable field matched the prior live snapshot, including PR
+  settings and empty bypass actors. The authority ruleset was not modified.
+
+**Pending:** this PR's human review/merge; checked-main Staging activation and its
+exact-SHA deployed E2E. Main Staging, release and production flags remain unset.
+Temporary draft PRs #6/#7 must not be merged.
+
+**Unresolved:** PR #7's initial Checks failed the existing mobile replay test on
+both initial test and Playwright retry. An unchanged-SHA rerun passed; no fix is
+claimed. Owner-account permissions/session trials remain separate handoff checks.
+
 ## Preview provisioning update — 2026-11-22
 
 PR #3 was merged at `838c30ca918520a622ee42b824e13b8d1fca2c8b`.

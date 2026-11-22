@@ -1,13 +1,15 @@
 # Preview, staging and production
 
-This is a prepared rollout, not evidence of a live deployment. Production remains
-disabled and no production launch is authorized by these files.
+Preview has passed live exact-SHA trials and the developer-approved merge gate
+has migrated to `Validate` + `preview/e2e`. This cutover removes legacy PR Staging.
+Checked-main Staging must remain disabled until this change is merged by the human
+developer. Production remains disabled; these files do not authorize a launch.
 
 Current provisioning evidence and blockers are recorded in
 [`github-setup-status.md`](github-setup-status.md). The preview Environment now has
 a verified main-only branch policy and both Cloudflare secret names configured.
-Credential validity and preview behavior still require the first live trial.
-Do not confuse Environment creation with successful version upload or deployed E2E.
+Successful version uploads and deployed E2E are recorded there with exact run links.
+Do not confuse those results with checked-main Staging or production activation.
 
 ## Two Workers, three stages
 
@@ -45,8 +47,9 @@ production each run deployed desktop/mobile tests on a fresh secret-free runner.
 5. Activate release maintenance separately. Production stays disabled until its
    own explicit developer activation and launch-readiness review.
 
-`ops/github/main-checks.json` intentionally still describes the transitional
-required checks. Committing a payload does not apply it to GitHub.
+`ops/github/main-checks.json` now describes `Validate` + `preview/e2e`.
+The live gate was separately migrated and read back on 2026-11-22; committing a
+payload alone does not apply it to GitHub.
 Do not run both legacy PR Staging and main Staging: they share live staging traffic
 but use different concurrency groups. Keep `MAIN_STAGING_ENABLED` unset until PR B.
 

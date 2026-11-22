@@ -27,10 +27,11 @@ El enlace de versión identifica lo comprobado; el alias de la propuesta puede c
 Staging será la web con cambios ya aceptados por el desarrollador. Producción solo
 cambiará con una versión publicada y autorizada por él.
 
-**Transición:** la configuración está preparada, pero el desarrollador debe verificarla.
-Mientras exista el circuito antiguo, también se comprueba su staging compartido y
-deben pasar ambos circuitos. Que ese enlace fijo funcione no demuestra que tu vista
-previa haya pasado las pruebas. Consulta `docs/releases.md` para el estado del despliegue.
+Las comprobaciones obligatorias son `Validate` y `preview/e2e`. La vista previa
+se verifica en su URL de versión exacta, no en el enlace compartido de staging.
+El circuito antiguo de staging por propuesta se retira con este cambio; staging
+desde `main` solo se activa después de que el desarrollador lo fusione y verifique.
+Consulta `docs/github-setup-status.md` para el estado real, no solo el preparado.
 Publicar para revisión NO publica en producción ni autoriza a Claude a fusionar cambios.
 
 ## Si algo falla
