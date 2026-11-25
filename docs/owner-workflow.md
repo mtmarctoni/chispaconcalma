@@ -34,6 +34,15 @@ desde `main` solo se activa después de que el desarrollador lo fusione y verifi
 Consulta `docs/github-setup-status.md` para el estado real, no solo el preparado.
 Publicar para revisión NO publica en producción ni autoriza a Claude a fusionar cambios.
 
+## Protección de `main`
+
+Nunca trabajes en `main`: cada tarea va en su propia sesión, worktree y rama.
+Al ejecutar `pnpm install`, el ordenador instala unos bloqueos locales que impiden
+guardar cambios en `main`, mezclar ramas dentro de `main` o subir cosas a `main`.
+Si ves un mensaje que empieza por «BLOQUEADO», abre una sesión nueva para la tarea.
+No desactives estos bloqueos. Las reglas de GitHub siguen siendo la protección
+principal; los bloqueos locales solo evitan líos en tu ordenador.
+
 ## Si algo falla
 
 Claude puede intentar reparar un error de código y repetir el proceso hasta dos

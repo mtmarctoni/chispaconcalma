@@ -20,6 +20,11 @@ accepts Node 26 LTS patch/minor updates but excludes the Node 27 alpha.
 `pnpm validate` runs Astro checks, unit/security tests, build
 and desktop/mobile browser tests. `pnpm format:check` checks formatting.
 
+`pnpm install` also installs local Git hooks (`scripts/git-hooks/`) into the clone's
+shared hooks folder, covering every worktree: they refuse commits, merge commits and
+pushes targeting `main`. They are a local safety net; the GitHub rulesets remain the
+authority. Existing hooks and a configured `core.hooksPath` are left untouched; CI skips it.
+
 - [Owner workflow](docs/owner-workflow.md)
 - [Website/design contract](docs/site-contract.md)
 - [Staging provisioning and security checklist](docs/staging-setup.md)
