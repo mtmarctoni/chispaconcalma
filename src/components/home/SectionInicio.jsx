@@ -28,7 +28,7 @@ export default function SectionInicio({ v }) {
           className={'intro-hide'}
           style={{
             alignSelf: 'flex-start',
-            background: '#9EE0D6',
+            background: '#D9CCF5',
             padding: '8px 16px',
             borderRadius: '999px',
             fontSize: '14px',
