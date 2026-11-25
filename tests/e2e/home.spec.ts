@@ -2,6 +2,11 @@ import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  // Interactions only work once the <Home client:load> island has hydrated;
+  // before that, clicks land on inert server-rendered HTML. The pre-hydration
+  // test uses its own JavaScript-disabled context, so this wait does not
+  // affect what it checks.
+  await expect(page.locator('[data-hydrated="true"]')).toBeAttached();
 });
 
 test('homepage renders its real content without client errors or broken assets', async ({
