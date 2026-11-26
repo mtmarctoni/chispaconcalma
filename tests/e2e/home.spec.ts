@@ -3,6 +3,7 @@ import { assertDeployedRobots } from '../support/deployed-robots.mjs';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
 });
 
 test('homepage renders its real content without client errors or broken assets', async ({
@@ -273,13 +274,14 @@ test.describe('original motion experience', () => {
     const scene = page.locator('#chispa-calma');
     await scene.getByRole('button', { name: 'Chispa', exact: true }).click();
     const calm = scene.getByRole('button', { name: 'Volver a la calma' });
+    const replay = scene.getByRole('button', { name: /Más chispa/ });
     await expect(calm).toBeVisible();
-    // The reference ignores clicks while its entrance is moving.
+    // The reference ignores clicks during entrance. A click can also complete
+    // before Playwright's post-click wait times out: check the resulting state
+    // on retry instead of clicking a button that has already been removed.
     await expect(async () => {
-      await calm.click({ timeout: 1000 });
-      await expect(
-        scene.getByRole('button', { name: /Más chispa/ }),
-      ).toBeVisible({ timeout: 1200 });
+      if (!(await replay.isVisible())) await calm.click({ timeout: 1000 });
+      await expect(replay).toBeVisible({ timeout: 1200 });
     }).toPass({ timeout: 6000 });
     await expect(
       scene.getByRole('img', {
