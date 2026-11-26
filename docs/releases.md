@@ -154,6 +154,31 @@ Local Astro preview does not apply Cloudflare response headers; deployed E2E
 must independently verify HTML, robots.txt and asset headers alongside the exact
 deployment SHA.
 
+Cloudflare replaces `X-Robots-Tag` with `noindex` on immutable version-preview
+URLs. Deployed E2E requires HTTP `noindex` there for documents and assets, and
+still requires `noindex, nofollow` in HTML. Live staging/production origins and
+PR aliases retain the full HTTP `noindex, nofollow` requirement. Trusted header
+injection always writes both directives; the exception only describes the
+platform's version-preview response.
+
+Preview runs trusted tooling and tests from `github.workflow_sha` on `main`,
+against the PR's built assets. Test or harness fixes in a PR therefore affect
+local Checks immediately but only affect Preview after developer review and
+merge to main. Rerunning an older workflow revision does not apply a pending fix.
+
+Local Playwright uses its own foreground Astro preview on port 4322 and refuses
+to reuse an existing server. Keep `pnpm dev` on its usual port 4321; a busy test
+port is an error, not a reason to test another checkout. `--ignore-lock` keeps
+Astro from auto-backgrounding under agents on macOS or Linux. An explicit
+`PLAYWRIGHT_BASE_URL` intentionally selects an external server and bypasses this
+managed server; use the exact version URL and `EXPECTED_SHA` for deployed checks.
+
+On macOS and Ubuntu/WSL, use Node from `.nvmrc`, pnpm from `packageManager`,
+and ensure `python3` is on PATH for the archive/security unit tests. On
+Ubuntu/WSL, install Chromium's system libraries with
+`pnpm exec playwright install --with-deps chromium` before validation; a browser
+download alone does not install those libraries.
+
 Record the exact SHA, release tag where applicable, source Checks run, deployment
 run, version/origin URL and deployed test result. Local builds/dry-runs, CI success,
 upload/deploy success and deployed E2E success are different claims.
