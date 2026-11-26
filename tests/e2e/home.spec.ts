@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { assertDeployedRobots } from '../support/deployed-robots.mjs';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -211,14 +212,7 @@ test('deployed documents and assets carry HTTP noindex', async ({
   for (const path of ['/', '/robots.txt', '/assets/portrait.png']) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(200);
-    const directives = (response.headers()['x-robots-tag'] || '')
-      .toLowerCase()
-      .split(/\s*,\s*/);
-    expect(directives, path).toEqual(
-      expect.arrayContaining(['noindex', 'nofollow']),
-    );
-    expect(directives, path).not.toContain('index');
-    expect(directives, path).not.toContain('follow');
+    assertDeployedRobots(response.url(), response.headers()['x-robots-tag']);
   }
 });
 
