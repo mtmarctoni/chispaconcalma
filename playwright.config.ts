@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 2 : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4321',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4322',
     reducedMotion: 'reduce',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
@@ -23,8 +23,10 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: 'pnpm preview --port 4321',
-        url: 'http://127.0.0.1:4321',
-        reuseExistingServer: !process.env.CI,
+        // Keep Astro in the foreground even when invoked by an agent. A separate
+        // port and no reuse prevent tests from exercising another checkout.
+        command: 'pnpm preview --port 4322 --ignore-lock',
+        url: 'http://127.0.0.1:4322',
+        reuseExistingServer: false,
       },
 });
