@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { assertDeployedRobots } from '../support/deployed-robots.mjs';
 
@@ -33,4 +34,43 @@ test('live origins, aliases and lookalike hosts still require nofollow', () => {
     assert.throws(() => assertDeployedRobots(url, 'noindex'));
     assertDeployedRobots(url, 'noindex, nofollow');
   }
+});
+
+function readConfig(overrides) {
+  const env = { ...process.env };
+  delete env.CI;
+  delete env.PLAYWRIGHT_BASE_URL;
+  Object.assign(env, overrides);
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      "import config from './playwright.config.ts'; console.log(JSON.stringify(config))",
+    ],
+    { env, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+test('local and CI browser tests own a foreground server away from the dev port', () => {
+  for (const env of [{}, { CI: 'true' }]) {
+    const config = readConfig(env);
+    assert.equal(config.webServer.reuseExistingServer, false);
+    assert.match(config.webServer.command, /--ignore-lock\b/);
+    assert.equal(config.webServer.url, config.use.baseURL);
+    assert.notEqual(new URL(config.use.baseURL).port, '4321');
+    assert.ok(
+      config.webServer.command.includes(
+        `--port ${new URL(config.use.baseURL).port}`,
+      ),
+    );
+  }
+});
+
+test('explicit deployment URLs do not start a local server', () => {
+  const config = readConfig({ PLAYWRIGHT_BASE_URL: version });
+  assert.equal(config.webServer, undefined);
+  assert.equal(config.use.baseURL, version);
 });
