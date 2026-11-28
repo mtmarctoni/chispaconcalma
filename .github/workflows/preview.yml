@@ -37,7 +37,7 @@ jobs:
         run: node scripts/deployment/preview-context.mjs identify
         env:
           GH_TOKEN: ${{ github.token }}
-      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           DEPLOY_SHA: ${{ steps.source.outputs.sha }}
         with:
@@ -153,7 +153,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
           EXPECTED_PR: ${{ needs.identify.outputs.pr }}
-      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           DEPLOY_SHA: ${{ needs.identify.outputs.sha }}
           PR_NUMBER: ${{ needs.identify.outputs.pr }}
@@ -204,7 +204,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Classify the verified commit
         id: eligible
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           ALLOWED_ACTION_REFS: ${{ vars.DEPENDABOT_AUTOMERGE_ALLOWED_ACTION_REFS }}
         with:
@@ -262,7 +262,7 @@ jobs:
           permission-pull-requests: read
           permission-workflows: ${{ needs.classify-dependabot.outputs.workflow_update == 'true' && 'write' || '' }}
       - name: Squash merge the exact checked commit
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           COMMIT_SUBJECT: ${{ needs.classify-dependabot.outputs.subject }}
         with:
