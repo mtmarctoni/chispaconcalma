@@ -37,11 +37,14 @@ Publicar para revisión NO publica en producción ni autoriza a Claude a fusiona
 ## Protección de `main`
 
 Nunca trabajes en `main`: cada tarea va en su propia sesión, worktree y rama.
-Al ejecutar `pnpm install`, el ordenador instala unos bloqueos locales que impiden
-guardar cambios en `main`, mezclar ramas dentro de `main` o subir cosas a `main`.
+`pnpm install` intenta activar los bloqueos locales. Cuando están activos, bloquean
+`git commit` en `main`, las fusiones que crean un commit en `main` y los envíos
+a la rama remota `main`.
+Git todavía puede actualizar tu `main` local mediante un avance rápido
+(`fast-forward`), por ejemplo al sincronizarlo con GitHub. También puede aplicar
+commits en tu `main` local mediante `git cherry-pick`.
 Si ves un mensaje que empieza por «BLOQUEADO», abre una sesión nueva para la tarea.
-No desactives estos bloqueos. Las reglas de GitHub siguen siendo la protección
-principal; los bloqueos locales solo evitan líos en tu ordenador.
+No desactives estos bloqueos. Las reglas de GitHub protegen la rama remota `main`.
 
 ## Si algo falla
 
