@@ -24,9 +24,7 @@ if (!isValidUsername(username)) {
   throw new Error(`${usernameBinding} must be a nonempty URL-safe username`);
 }
 if (!isValidPassword(password)) {
-  throw new Error(
-    `${passwordBinding} must be a URL-safe password of at least 32 characters`,
-  );
+  throw new Error(`${passwordBinding} must be a nonempty URL-safe password`);
 }
 
 const directory = await mkdtemp(path.join(os.tmpdir(), 'prelaunch-auth-'));
