@@ -92,8 +92,8 @@ In GitHub Settings → Secrets and variables → Actions → Variables, set thes
 repository variables, shared by Staging and prelaunch Production:
 
 - `BASIC_AUTH_USERNAME`: a nonempty username using letters, digits, `_` or `-`.
-- `BASIC_AUTH_PASSWORD`: a random URL-safe password of at least 32 characters,
-  using letters, digits, `_` or `-`.
+- `BASIC_AUTH_PASSWORD`: a nonempty password using letters, digits, `_` or `-`.
+  No password-length policy is enforced. Longer random passwords are recommended.
 
 These are a low-stakes shared access gate, not individual accounts. Repository
 variables are not confidential or automatically masked in Actions logs, and can
