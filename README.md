@@ -21,9 +21,10 @@ accepts Node 26 LTS patch/minor updates but excludes the Node 27 alpha.
 and desktop/mobile browser tests. `pnpm format:check` checks formatting.
 
 `pnpm install` also installs local Git hooks (`scripts/git-hooks/`) into the clone's
-shared hooks folder, covering every worktree: they refuse commits, merge commits and
-pushes targeting `main`. They are a local safety net; the GitHub rulesets remain the
-authority. Existing hooks and a configured `core.hooksPath` are left untouched; CI skips it.
+shared hooks folder for use by every worktree. When active, they block `git commit`
+on `main`, merges that create a commit on `main`, and pushes targeting remote `main`.
+GitHub rulesets protect remote `main`. The installer preserves existing custom hooks,
+skips clones with a configured `core.hooksPath`, and skips CI.
 
 - [Owner workflow](docs/owner-workflow.md)
 - [Website/design contract](docs/site-contract.md)
