@@ -90,6 +90,42 @@ Actions allowlist before activation; committing workflow references is not appro
 The full `Validate` and preview gate apply to release PRs too; there is no special
 metadata-only bypass.
 
+### Dependabot automatic merges
+
+The `merge-dependabot` job runs after successful Checks, version Preview E2E and
+publication of the `preview/e2e` status. It considers open, non-draft, same-repo
+Dependabot PRs targeting `main` with a single GitHub-verified Dependabot commit.
+It reads the signed commit's standard `chore(deps): bump … from X.Y.Z to X.Y.Z`
+subject, also accepting `chore(deps-dev)`. It checks that the entire commit diff
+replaces exactly the named pin in the root `requirements.txt` with the stated
+minor or patch release. Changes to other files or pins, major, grouped, prerelease,
+unsigned and unrecognized bumps stay in manual review. GitHub receives the checked
+head SHA with the squash merge request and enforces the current merge rules,
+including the up-to-date requirement.
+
+After developer review and merge of the workflow:
+
+1. Create a dedicated GitHub App installed on this repository only, with Contents
+   read/write and Pull requests read. Add its integration to `main-update-authority`
+   as a PR-only bypass actor. Read back both live rulesets and verify that
+   `main-review-and-checks` enforces `Validate` and `preview/e2e`, requires branches
+   to be up to date, and gives the merge App no bypass. On 2026-11-28 the live
+   check ruleset allowed an admin bypass even though the checked-in policy has an
+   empty bypass list. Resolve that discrepancy with the developer before activation.
+2. Create the `dependabot-automerge` Environment with a main-only deployment
+   branch policy. Set its `DEPENDABOT_AUTOMERGE_APP_CLIENT_ID` variable and
+   `DEPENDABOT_AUTOMERGE_APP_PRIVATE_KEY` secret. Allow the pinned
+   `actions/create-github-app-token` action if needed.
+3. Set the repository variable `DEPENDABOT_AUTOMERGE_ENABLED=true` to turn on the
+   job. Verify the first eligible merge and confirm a major update stays open even
+   after its required checks pass. Remove the variable to disable future runs and
+   cancel any in-flight run if an immediate stop is needed. If `main` advances first,
+   GitHub can reject the merge. The PR needs a rebase and fresh checks on its new SHA.
+
+This job uses GitHub's SHA-conditional merge API after verification. The repository
+auto-merge setting can stay disabled. For an existing PR, a fresh Checks run can
+trigger verification if its head is current.
+
 ## Versions and releases
 
 Release Please maintains a **draft** release PR containing package version, manifest
