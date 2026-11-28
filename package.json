@@ -9,8 +9,9 @@
     "node": ">=26.13.1 <27"
   },
   "scripts": {
-    "format": "prettier --write src scripts/staging scripts/deployment scripts/releases tests astro.config.mjs cloudflare.config.ts playwright.config.ts",
-    "format:check": "prettier --check src scripts/staging scripts/deployment scripts/releases tests astro.config.mjs cloudflare.config.ts playwright.config.ts",
+    "prepare": "node scripts/git-hooks/install.mjs",
+    "format": "prettier --write src scripts/staging scripts/deployment scripts/releases scripts/git-hooks tests astro.config.mjs cloudflare.config.ts playwright.config.ts",
+    "format:check": "prettier --check src scripts/staging scripts/deployment scripts/releases scripts/git-hooks tests astro.config.mjs cloudflare.config.ts playwright.config.ts",
     "dev": "astro dev --host 127.0.0.1",
     "check": "astro check",
     "build": "astro build",

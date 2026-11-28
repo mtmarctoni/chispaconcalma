@@ -1,0 +1,10 @@
+#!/bin/sh
+# chispaconcalma-main-guard: installed by scripts/git-hooks/install.mjs.
+# Guard git commit and merge commits on main. GitHub rulesets protect remote main.
+head_ref=$(git symbolic-ref -q HEAD)
+if [ "$head_ref" = "refs/heads/main" ]; then
+  echo "BLOQUEADO: estás en la rama 'main'. No se guardan cambios aquí." >&2
+  echo "Abre una sesión nueva en Code (worktree + rama propia) para esta tarea." >&2
+  exit 1
+fi
+exit 0

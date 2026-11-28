@@ -1,0 +1,10 @@
+#!/bin/sh
+# chispaconcalma-main-guard: installed by scripts/git-hooks/install.mjs.
+# Local guard: never push to main. GitHub rulesets remain the authority.
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "BLOQUEADO: intento de subir a 'main' en GitHub. Solo se suben ramas de tarea." >&2
+    exit 1
+  fi
+done
+exit 0
