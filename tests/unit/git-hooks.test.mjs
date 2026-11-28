@@ -20,19 +20,17 @@ function git(cwd, ...args) {
   );
 }
 
-async function repo(t) {
-  const dir = await mkdtemp(path.join(tmpdir(), 'chispa-hooks-'));
-  t.after(() => rm(dir, { force: true, recursive: true }));
-  assert.equal(git(dir, 'init', '-q', '-b', 'main').status, 0);
-  return dir;
+function gitOk(cwd, ...args) {
+  const result = git(cwd, ...args);
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
 }
 
-function prePush(dir, remoteRef) {
-  return spawnSync(path.join(dir, '.git/hooks/pre-push'), ['origin', 'url'], {
-    cwd: dir,
-    encoding: 'utf8',
-    input: `refs/heads/task abc ${remoteRef} def\n`,
-  });
+async function repo(t, ...initOptions) {
+  const dir = await mkdtemp(path.join(tmpdir(), 'chispa-hooks-'));
+  t.after(() => rm(dir, { force: true, recursive: true }));
+  gitOk(dir, 'init', '-q', '-b', 'main', ...initOptions);
+  return dir;
 }
 
 test('guard refuses commits on main and allows task branches', async (t) => {
@@ -70,13 +68,59 @@ test('guard refuses merge commits on main', async (t) => {
   assert.match(merge.stderr, /BLOQUEADO/);
 });
 
-test('guard refuses pushes to main only', async (t) => {
+test('guard refuses commits on main when a tag has the same name', async (t) => {
   const dir = await repo(t);
+  gitOk(dir, 'commit', '-q', '--allow-empty', '-m', 'base');
+  const base = gitOk(dir, 'rev-parse', 'HEAD');
+  gitOk(dir, 'tag', 'main');
   await install(dir, quiet);
-  const toMain = prePush(dir, 'refs/heads/main');
-  assert.equal(toMain.status, 1);
-  assert.match(toMain.stderr, /BLOQUEADO/);
-  assert.equal(prePush(dir, 'refs/heads/owner/task').status, 0);
+
+  const commit = git(dir, 'commit', '-q', '--allow-empty', '-m', 'blocked');
+  assert.notEqual(commit.status, 0);
+  assert.match(commit.stderr, /BLOQUEADO/);
+  assert.equal(gitOk(dir, 'rev-parse', 'HEAD'), base);
+});
+
+test('hooks installed from a linked worktree are used across the clone', async (t) => {
+  const dir = await repo(t);
+  const worktree = path.join(dir, 'worktree');
+  const remote = path.join(dir, 'remote.git');
+  gitOk(dir, 'commit', '-q', '--allow-empty', '-m', 'base');
+  gitOk(dir, 'worktree', 'add', '-q', '-b', 'owner/task', worktree);
+  gitOk(dir, 'init', '-q', '--bare', remote);
+  await install(worktree, quiet);
+
+  const onMain = git(dir, 'commit', '-q', '--allow-empty', '-m', 'blocked');
+  assert.notEqual(onMain.status, 0);
+  assert.match(onMain.stderr, /BLOQUEADO/);
+  gitOk(worktree, 'commit', '-q', '--allow-empty', '-m', 'task');
+  const taskHead = gitOk(worktree, 'rev-parse', 'HEAD');
+
+  const mixedPush = git(
+    worktree,
+    'push',
+    remote,
+    'HEAD:refs/heads/owner/task',
+    'HEAD:refs/heads/main',
+  );
+  assert.notEqual(mixedPush.status, 0);
+  assert.match(mixedPush.stderr, /BLOQUEADO/);
+  assert.equal(gitOk(remote, 'for-each-ref', 'refs/heads/'), '');
+
+  gitOk(worktree, 'push', '-q', remote, 'HEAD:refs/heads/owner/task');
+  assert.equal(gitOk(remote, 'rev-parse', 'refs/heads/owner/task'), taskHead);
+
+  gitOk(dir, 'merge', '--ff-only', 'owner/task');
+  assert.equal(gitOk(dir, 'rev-parse', 'HEAD'), taskHead);
+});
+
+test('installer creates the hooks directory in a checkout without a template', async (t) => {
+  const dir = await repo(t, '--template=');
+  await install(dir, quiet);
+
+  const commit = git(dir, 'commit', '-q', '--allow-empty', '-m', 'blocked');
+  assert.notEqual(commit.status, 0);
+  assert.match(commit.stderr, /BLOQUEADO/);
 });
 
 test('installer keeps hooks it did not install', async (t) => {
@@ -91,6 +135,13 @@ test('installer keeps hooks it did not install', async (t) => {
 test('installer respects a configured core.hooksPath', async (t) => {
   const dir = await repo(t);
   assert.equal(git(dir, 'config', 'core.hooksPath', 'custom').status, 0);
+  const result = await install(dir, quiet);
+  assert.deepEqual(result.installed, []);
+});
+
+test('installer respects an empty core.hooksPath', async (t) => {
+  const dir = await repo(t);
+  gitOk(dir, 'config', 'core.hooksPath', '');
   const result = await install(dir, quiet);
   assert.deepEqual(result.installed, []);
 });

@@ -2,7 +2,7 @@
 // so every worktree of this clone is covered. Runs from `pnpm install` (prepare).
 // It never overwrites a hook it did not install and never fails the install.
 import { spawnSync } from 'node:child_process';
-import { chmod, copyFile, readFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,7 +11,7 @@ const SOURCE_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   'hooks',
 );
-// pre-merge-commit reuses the pre-commit guard: no merge commits on main.
+// Git calls pre-merge-commit before recording an automatic merge commit.
 const HOOKS = {
   'pre-commit': 'pre-commit',
   'pre-merge-commit': 'pre-commit',
@@ -43,11 +43,12 @@ export async function install(cwd = process.cwd(), log = console.log) {
     log('git-hooks: not a Git checkout; skipped.');
     return { installed: [], skipped: Object.keys(HOOKS) };
   }
-  if (git(cwd, 'config', '--get', 'core.hooksPath')) {
+  if (git(cwd, 'config', '--get', 'core.hooksPath') !== null) {
     log('git-hooks: core.hooksPath is set; main guard not installed.');
     return { installed: [], skipped: Object.keys(HOOKS) };
   }
   const hooksDir = path.join(commonDir, 'hooks');
+  await mkdir(hooksDir, { recursive: true });
   const installed = [];
   const skipped = [];
   for (const [name, source] of Object.entries(HOOKS)) {
