@@ -69,22 +69,27 @@ jobs:
         env:
           EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
       - run: node scripts/staging/add-headers.mjs staging-assets
+      - run: node scripts/deployment/build-protected.mjs staging staging-assets
       - name: Recheck current main before deployment
         run: node scripts/deployment/main-context.mjs
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOY_URL: ${{ vars.DEPLOY_URL }}
           EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
-      - run: pnpm exec cf deploy ./staging-assets --mode staging --no-provision --message "$DEPLOY_SHA"
+      - run: node scripts/deployment/deploy-protected.mjs staging
         env:
           DEPLOY_SHA: ${{ needs.identify.outputs.sha }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DEPLOY_URL: ${{ steps.source.outputs.url }}
+          BASIC_AUTH_USERNAME: ${{ vars.BASIC_AUTH_USERNAME }}
+          BASIC_AUTH_PASSWORD: ${{ vars.BASIC_AUTH_PASSWORD }}
 
   e2e:
     needs: [identify, deploy]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: staging
     permissions:
       contents: read
     steps:
@@ -101,6 +106,9 @@ jobs:
       - run: pnpm test:e2e
         env:
           PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.url }}
+          PRELAUNCH_AUTH_MODE: staging
+          BASIC_AUTH_USERNAME: ${{ vars.BASIC_AUTH_USERNAME }}
+          BASIC_AUTH_PASSWORD: ${{ vars.BASIC_AUTH_PASSWORD }}
           EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
       - name: Record exact deployed evidence
         run: |
@@ -112,11 +120,3 @@ jobs:
         env:
           DEPLOY_SHA: ${{ needs.identify.outputs.sha }}
           DEPLOY_URL: ${{ needs.deploy.outputs.url }}
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
-        with:
-          name: main-staging-browser-report
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 3
