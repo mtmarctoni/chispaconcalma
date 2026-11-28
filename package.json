@@ -31,7 +31,7 @@
     "@types/node": "^26.6.10",
     "@types/react": "^19.3.3",
     "@types/react-dom": "^19.3.0",
-    "cf": "1.0.0-rc.2",
+    "cf": "1.0.0-rc.5",
     "prettier": "^3.10.1",
     "prettier-plugin-astro": "^1.1.2",
     "typescript": "^6.0.3",
