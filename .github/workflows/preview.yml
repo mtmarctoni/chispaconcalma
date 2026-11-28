@@ -175,3 +175,68 @@ jobs:
             });
             await github.rest.issues.createComment({ ...context.repo, issue_number: Number(process.env.PR_NUMBER), body });
             await core.summary.addHeading(result).addRaw(body).write();
+
+  merge-dependabot:
+    needs: [identify, e2e, notify]
+    if: >-
+      vars.DEPENDABOT_AUTOMERGE_ENABLED == 'true' &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: dependabot-automerge
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      PR_NUMBER: ${{ needs.identify.outputs.pr }}
+      EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Classify the verified commit
+        id: eligible
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          result-encoding: string
+          script: |
+            const { isCurrentDependabotPull, eligibleBumpSubject } = require('./scripts/deployment/dependabot-automerge.mjs');
+            const { EXPECTED_SHA: sha, GITHUB_REPOSITORY: repository } = process.env;
+            const { data: pull } = await github.rest.pulls.get({
+              ...context.repo, pull_number: Number(process.env.PR_NUMBER),
+            });
+            if (!isCurrentDependabotPull(pull, repository, sha)) return false;
+            const { data: commit } = await github.rest.repos.getCommit({ ...context.repo, ref: sha });
+            const subject = eligibleBumpSubject(commit, sha);
+            if (!subject) return false;
+            core.setOutput('subject', subject);
+            return true;
+      - name: Repository-scoped merge App token
+        if: steps.eligible.outputs.result == 'true'
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.DEPENDABOT_AUTOMERGE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDABOT_AUTOMERGE_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: read
+      - name: Squash merge the exact checked commit
+        if: steps.eligible.outputs.result == 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          COMMIT_SUBJECT: ${{ steps.eligible.outputs.subject }}
+        with:
+          github-token: ${{ steps.app.outputs.token }}
+          script: |
+            const { isCurrentDependabotPull } = require('./scripts/deployment/dependabot-automerge.mjs');
+            const { EXPECTED_SHA: sha, GITHUB_REPOSITORY: repository } = process.env;
+            const params = { ...context.repo, pull_number: Number(process.env.PR_NUMBER) };
+            const { data: pull } = await github.rest.pulls.get(params);
+            if (!isCurrentDependabotPull(pull, repository, sha)) return;
+            const { data: result } = await github.rest.pulls.merge({
+              ...params, sha, merge_method: 'squash', commit_title: process.env.COMMIT_SUBJECT,
+              commit_message: `Dependabot update from PR #${pull.number}.`,
+            });
+            if (!result.merged) core.setFailed(result.message);
