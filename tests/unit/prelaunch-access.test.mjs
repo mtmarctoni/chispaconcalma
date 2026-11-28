@@ -68,7 +68,7 @@ test('absent or wrong credentials never reach the asset binding', async () => {
       assert.equal(await response.text(), '');
     }
   }
-  for (const unsetPassword of [undefined, '', 'short']) {
+  for (const unsetPassword of [undefined, '', 'has space', 'ñ']) {
     const response = await worker.fetch(
       makeRequest('/', { Authorization: authorization }),
       {
@@ -92,6 +92,24 @@ test('absent or wrong credentials never reach the asset binding', async () => {
     );
     assert.equal(response.status, 503);
     assert.equal(response.headers.get('X-Robots-Tag'), 'noindex, nofollow');
+  }
+});
+
+test('configured passwords have no minimum length', async () => {
+  for (const shortPassword of ['x', '123456']) {
+    const response = await worker.fetch(
+      makeRequest('/', {
+        Authorization: 'Basic ' + btoa(username + ':' + shortPassword),
+      }),
+      {
+        BASIC_AUTH_USERNAME: username,
+        BASIC_AUTH_PASSWORD: shortPassword,
+        PRELAUNCH_SITE_HEADERS: {},
+        ASSETS: { fetch: () => new Response('authorized') },
+      },
+    );
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), 'authorized');
   }
 });
 

@@ -6,7 +6,7 @@ export function isValidUsername(username) {
 }
 
 export function isValidPassword(password) {
-  return typeof password === 'string' && /^[A-Za-z0-9_-]{32,}$/.test(password);
+  return typeof password === 'string' && /^[A-Za-z0-9_-]+$/.test(password);
 }
 
 export function protectedOrigin(mode, value) {
