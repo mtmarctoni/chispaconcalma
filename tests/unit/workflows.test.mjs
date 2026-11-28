@@ -62,8 +62,11 @@ test('main staging is opt-in, consumes checked assets and serializes deployment 
   const deploy = staging.jobs.deploy.steps.find(
     (s) => s.env?.CLOUDFLARE_API_TOKEN,
   );
-  assert.match(deploy.run, /cf deploy .* --mode staging --no-provision/);
-  assert.equal(staging.jobs.e2e.environment, undefined);
+  assert.equal(
+    deploy.run,
+    'node scripts/deployment/deploy-protected.mjs staging',
+  );
+  assert.equal(staging.jobs.e2e.environment, 'staging');
   const checks = await workflow('checks');
   const stamp = checks.jobs.validate.steps.find(
     (s) => s.run === 'pnpm staging:metadata',
@@ -91,7 +94,7 @@ test('production is opt-in, resolves before building and deploys through trusted
     );
   }
   assert.equal(prod.jobs.deploy.environment, 'production');
-  assert.equal(prod.jobs.e2e.environment, undefined);
+  assert.equal(prod.jobs.e2e.environment, 'production');
   assert.equal(prod.concurrency['cancel-in-progress'], false);
   assert.equal(prod.on.workflow_call.secrets, undefined);
   const release = await workflow('release-please');
@@ -122,4 +125,47 @@ test('production is opt-in, resolves before building and deploys through trusted
   assert.equal(config['draft-pull-request'], true);
   assert.equal(config['bump-minor-pre-major'], false);
   assert.equal(config['bump-patch-for-minor-pre-major'], false);
+});
+
+test('only trusted staging and production steps receive site credentials', async () => {
+  for (const mode of ['staging', 'production']) {
+    const { jobs } = await workflow(`deploy-${mode}`);
+    const pack = jobs.deploy.steps.findIndex((step) =>
+      step.run?.startsWith('node scripts/deployment/build-protected.mjs '),
+    );
+    const deploy = jobs.deploy.steps.findIndex(
+      (step) => step.env?.CLOUDFLARE_API_TOKEN,
+    );
+    assert.ok(pack >= 0 && pack < deploy);
+    const credentials = {
+      BASIC_AUTH_USERNAME: '${{ vars.BASIC_AUTH_USERNAME }}',
+      BASIC_AUTH_PASSWORD: '${{ vars.BASIC_AUTH_PASSWORD }}',
+    };
+    for (const [name, job] of Object.entries(jobs)) {
+      for (const step of job.steps || []) {
+        if (
+          (name === 'deploy' && step === jobs.deploy.steps[deploy]) ||
+          (name === 'e2e' && step.run === 'pnpm test:e2e')
+        ) {
+          for (const [key, value] of Object.entries(credentials)) {
+            assert.equal(step.env[key], value);
+          }
+        } else {
+          for (const key of Object.keys(credentials)) {
+            assert.equal(step.env?.[key], undefined);
+          }
+        }
+      }
+    }
+    assert.equal(
+      jobs.e2e.steps.find((s) => s.run === 'pnpm test:e2e').env
+        .PRELAUNCH_AUTH_MODE,
+      mode,
+    );
+    assert.ok(
+      !jobs.e2e.steps.some((s) =>
+        s.uses?.startsWith('actions/upload-artifact@'),
+      ),
+    );
+  }
 });

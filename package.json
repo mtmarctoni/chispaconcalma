@@ -21,7 +21,7 @@
     "validate": "pnpm format:check && pnpm check && pnpm test && pnpm build && pnpm test:e2e",
     "staging:metadata": "node scripts/staging/metadata.mjs",
     "staging:validate": "node scripts/staging/validate-assets.mjs dist",
-    "staging:dry-run": "cf deploy ./dist --mode staging --dry-run"
+    "staging:dry-run": "node scripts/staging/add-headers.mjs dist && node scripts/deployment/build-protected.mjs staging dist && cf deploy --prebuilt --mode staging --dry-run"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",

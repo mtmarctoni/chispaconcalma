@@ -11,9 +11,24 @@ test('prelaunch robots allow discovery of noindex without advertising a sitemap'
 
 test('all deployment paths retain trusted noindex injection', async () => {
   for (const [name, job, directory, command] of [
-    ['preview', 'upload', 'preview-assets', 'workers versions create'],
-    ['deploy-staging', 'deploy', 'staging-assets', 'deploy'],
-    ['deploy-production', 'deploy', 'production-assets', 'deploy'],
+    [
+      'preview',
+      'upload',
+      'preview-assets',
+      'cf workers versions create ./preview-assets',
+    ],
+    [
+      'deploy-staging',
+      'deploy',
+      'staging-assets',
+      'node scripts/deployment/deploy-protected.mjs staging',
+    ],
+    [
+      'deploy-production',
+      'deploy',
+      'production-assets',
+      'node scripts/deployment/deploy-protected.mjs production',
+    ],
   ]) {
     const workflow = parse(
       await readFile(`.github/workflows/${name}.yml`, 'utf8'),
@@ -24,9 +39,7 @@ test('all deployment paths retain trusted noindex injection', async () => {
         step.run === `node scripts/staging/add-headers.mjs ${directory}`,
     );
     const deployment = steps.findIndex(
-      (step) =>
-        step.env?.CLOUDFLARE_API_TOKEN &&
-        step.run?.includes(`cf ${command} ./${directory} `),
+      (step) => step.env?.CLOUDFLARE_API_TOKEN && step.run?.includes(command),
     );
     assert.ok(injection >= 0, `${name} must inject trusted noindex headers`);
     assert.ok(
