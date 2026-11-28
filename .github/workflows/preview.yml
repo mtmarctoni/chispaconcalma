@@ -176,28 +176,37 @@ jobs:
             await github.rest.issues.createComment({ ...context.repo, issue_number: Number(process.env.PR_NUMBER), body });
             await core.summary.addHeading(result).addRaw(body).write();
 
-  merge-dependabot:
+  classify-dependabot:
     needs: [identify, e2e, notify]
     if: >-
       vars.DEPENDABOT_AUTOMERGE_ENABLED == 'true' &&
       startsWith(github.event.workflow_run.head_branch, 'dependabot/')
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    environment: dependabot-automerge
     permissions:
       contents: read
       pull-requests: read
     env:
       PR_NUMBER: ${{ needs.identify.outputs.pr }}
       EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
+    outputs:
+      subject: ${{ steps.eligible.outputs.subject }}
+      workflow_update: ${{ steps.eligible.outputs.workflow_update }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Classify the verified commit
         id: eligible
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          ALLOWED_ACTION_REFS: ${{ vars.DEPENDABOT_AUTOMERGE_ALLOWED_ACTION_REFS }}
         with:
           result-encoding: string
           script: |
@@ -208,12 +217,41 @@ jobs:
             });
             if (!isCurrentDependabotPull(pull, repository, sha)) return false;
             const { data: commit } = await github.rest.repos.getCommit({ ...context.repo, ref: sha });
-            const subject = eligibleBumpSubject(commit, sha);
+            if (commit.files?.length !== pull.changed_files) return false;
+            let locks;
+            if (commit.parents.length === 1 && commit.files.some(file => file.filename === 'pnpm-lock.yaml')) {
+              const { parse } = require('yaml');
+              locks = await Promise.all([commit.parents[0].sha, sha].map(async ref => {
+                const { data } = await github.rest.repos.getContent({
+                  ...context.repo, path: 'pnpm-lock.yaml', ref,
+                });
+                if (data.type !== 'file' || data.encoding !== 'base64') return null;
+                return parse(Buffer.from(data.content, 'base64').toString('utf8'));
+              }));
+            }
+            const subject = eligibleBumpSubject(commit, sha, process.env.ALLOWED_ACTION_REFS, locks);
             if (!subject) return false;
             core.setOutput('subject', subject);
+            core.setOutput('workflow_update', String(commit.files[0].filename.startsWith('.github/workflows/')));
             return true;
+
+  merge-dependabot:
+    needs: [identify, classify-dependabot]
+    if: needs.classify-dependabot.outputs.subject != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: dependabot-automerge
+    permissions:
+      contents: read
+    env:
+      PR_NUMBER: ${{ needs.identify.outputs.pr }}
+      EXPECTED_SHA: ${{ needs.identify.outputs.sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
       - name: Repository-scoped merge App token
-        if: steps.eligible.outputs.result == 'true'
         id: app
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
@@ -222,11 +260,11 @@ jobs:
           repositories: ${{ github.event.repository.name }}
           permission-contents: write
           permission-pull-requests: read
+          permission-workflows: ${{ needs.classify-dependabot.outputs.workflow_update == 'true' && 'write' || '' }}
       - name: Squash merge the exact checked commit
-        if: steps.eligible.outputs.result == 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
-          COMMIT_SUBJECT: ${{ steps.eligible.outputs.subject }}
+          COMMIT_SUBJECT: ${{ needs.classify-dependabot.outputs.subject }}
         with:
           github-token: ${{ steps.app.outputs.token }}
           script: |
