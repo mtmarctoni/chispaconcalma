@@ -1,6 +1,6 @@
 instaloader==4.15.3
 requests==2.34.2
-certifi==2026.10.23
+certifi==2026.11.20
 charset-normalizer==3.5.3
 idna==3.20
 urllib3==2.8.0
