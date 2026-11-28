@@ -27,8 +27,10 @@ private data. Uploading previews must not change live staging traffic.
 
 All builds are secret-free. Trusted workflow-revision tooling validates archive
 provenance, size, paths and static contents before injecting trusted security headers.
-Only the final CLI step receives Cloudflare credentials. Preview, staging and
-production each run deployed desktop/mobile tests on a fresh secret-free runner.
+Only the final CLI step receives Cloudflare deployment credentials. Each stage
+runs deployed desktop/mobile tests on a fresh runner. Staging and production tests
+receive only the shared site credentials, not Cloudflare credentials. PR Preview
+tests remain secret-free.
 
 ## Rollout: do not remove the existing merge gate early
 
@@ -62,19 +64,61 @@ repository-level secrets, since an owner-edited PR workflow could read those.
 | Environment | Secrets | Variables / policy |
 | --- | --- | --- |
 | `preview` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Uses repository variable `PREVIEW_ACCOUNT_SUBDOMAIN` to validate uploaded URLs |
-| `staging` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Environment `DEPLOY_URL`; keep legacy repository `STAGING_URL` during transition |
+| `staging` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Environment `DEPLOY_URL`; repository `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD`; keep legacy repository `STAGING_URL` during transition |
 | `release` | `RELEASE_APP_PRIVATE_KEY` | `RELEASE_APP_ID`; main-only access for release maintenance |
-| `production` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Environment `DEPLOY_URL`; required developer reviewer, prevent self-review where supported |
+| `production` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Environment `DEPLOY_URL`; repository `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD`; required developer reviewer, prevent self-review where supported |
 
 Use a nonproduction Cloudflare account for preview/staging and a separate production
 account unless equivalent enforced isolation has been verified. A fixed Worker name
 does not scope a stolen account token. Provision the staging Worker first with
 workers.dev and version previews enabled; missing Workers fail rather than triggering
-an automatic bootstrap deployment. Configure approved origins/domains externally.
+an automatic bootstrap deployment. The protected workflows accept only their exact
+HTTPS `workers.dev` origins.
 
 Production reviewer policy must be operable with the actual team: if preventing
 self-review means the sole developer cannot approve a run they triggered, arrange a
 separate authorized reviewer/operator; do not silently disable the safeguard.
+
+### Prelaunch access
+
+Staging uses `https://chispaconcalma-staging.mtmarctoni.workers.dev`. Production
+uses `https://chispaconcalma.mtmarctoni.workers.dev` until the custom domain is
+approved. Set the exact origin as `DEPLOY_URL` on each GitHub Environment. Keep
+the Production route disabled in Cloudflare until the protected workflow deploys
+the first approved release. That workflow enables its `workers.dev` route with
+version previews disabled.
+
+In GitHub Settings → Secrets and variables → Actions → Variables, set these
+repository variables, shared by Staging and prelaunch Production:
+
+- `BASIC_AUTH_USERNAME`: a nonempty username using letters, digits, `_` or `-`.
+- `BASIC_AUTH_PASSWORD`: a random URL-safe password of at least 32 characters,
+  using letters, digits, `_` or `-`.
+
+These are a low-stakes shared access gate, not individual accounts. Repository
+variables are not confidential or automatically masked in Actions logs, and can
+be read by PR workflows. Never reuse these credentials for other services or use
+this gate to protect sensitive data. Do not add environment-level variables with
+the same names unless intentionally overriding the shared values.
+
+The trusted deployment uploads both values as Worker secrets with the guarded
+version, keeping credentials out of build artifacts. Missing or invalid values
+stop deployment and the guarded Worker fails closed if either binding is missing
+or invalid. To rotate credentials, update the repository variables and redeploy
+each protected environment: editing a GitHub variable does not change a running
+Worker or previously deployed versions. If an older protected version remains
+reachable, it retains its old credentials.
+
+Configure both repository variables before merging the protected workflow. Confirm the
+next Staging run passed deployed E2E and that a signed-out request returns a Basic
+challenge. Production’s deployment and browser-test jobs each use the protected
+GitHub Environment and may require separate reviewer approvals. Verify before
+changing production activation or routing.
+
+The check uses the exact HTTPS origin for authenticated requests. Authenticated
+browser traces, screenshots and report uploads are disabled. PR Preview aliases
+and version URLs remain public, including previously uploaded versions. The shared
+Staging URL becomes private on its first protected deploy.
 
 Repository activation variables (unset means disabled):
 
@@ -187,16 +231,17 @@ artifact restore and does not restore old external configuration. No automatic r
 
 Deploy and E2E are serialized without cancelling running verification. GitHub can
 supersede pending runs; avoid overlapping releases and report cancellation honestly.
-Production E2E is blocking; a failed test leaves the candidate visible for inspection.
+Production E2E is blocking. If a test fails, the protected candidate stays deployed for authorized inspection.
 
 ## Evidence and launch boundary
 
 ### Prelaunch indexing policy
 
-Preview and staging are public review URLs, not private publishing systems.
-Their `robots.txt` deliberately allows crawling so search engines can read the
-`noindex, nofollow` directive in both the initial HTML and the trusted deployment
-HTTP headers. Blocking crawlers with `Disallow: /` would prevent discovery of
+PR Previews are public and allow crawling so search engines can read
+`noindex, nofollow` in the initial HTML and indexing directives in the response
+headers. Protected Staging and Production origins return HTTP 401 with
+`X-Robots-Tag: noindex, nofollow` to anonymous requests for pages and assets.
+Authorized responses retain the HTML and HTTP directives and use `private, no-store`. Blocking crawlers with `Disallow: /` would prevent discovery of
 those directives and can leave externally linked URLs eligible to appear in
 search results. No sitemap is advertised before launch.
 
